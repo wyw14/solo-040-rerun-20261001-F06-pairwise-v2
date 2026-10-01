@@ -3,6 +3,7 @@ package cycle
 import (
 	"context"
 	"errors"
+	"fmt"
 	"sync"
 	"time"
 
@@ -60,6 +61,26 @@ func (c *Coordinator) Current(chamberID string) (model.TransitCycle, bool) {
 	cycleValue, ok := c.current[chamberID]
 	c.mu.RUnlock()
 	return cycleValue.Clone(), ok
+}
+
+// RequireActive guards field actions such as valve ramp steps: the cycle must
+// still be the chamber's current generation and must not be terminal. A
+// cancelled transit, an emergency stop, or a newer transit generation all make
+// the captured cycle stale and block issuing or resuming steps.
+func (c *Coordinator) RequireActive(cycleValue model.TransitCycle) (model.TransitCycle, error) {
+	c.mu.RLock()
+	current, ok := c.current[cycleValue.ChamberID]
+	c.mu.RUnlock()
+	if !ok {
+		return model.TransitCycle{}, errors.New("active transit not found")
+	}
+	if !current.IdentityMatches(cycleValue.ID, cycleValue.Generation) {
+		return model.TransitCycle{}, errors.New("transit generation changed; ramp can no longer continue")
+	}
+	if current.Stage.Terminal() {
+		return model.TransitCycle{}, fmt.Errorf("transit is %s; ramp can no longer continue", current.Stage)
+	}
+	return current.Clone(), nil
 }
 
 func (c *Coordinator) Cancel(ctx context.Context, chamberID, reason string) (model.TransitCycle, error) {

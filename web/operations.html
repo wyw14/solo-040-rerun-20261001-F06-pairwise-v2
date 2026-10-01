@@ -13,6 +13,29 @@
     </form></section>
     <section class="panel"><h2>Current transit</h2><div class="metrics"><div class="metric">Chamber<strong id="metric-chamber">-</strong></div><div class="metric">Stage<strong id="metric-stage">-</strong></div><div class="metric">Cycle<strong id="metric-cycle">-</strong></div></div></section>
     <section class="panel wide"><h2>Active plans</h2><table><thead><tr><th>Chamber</th><th>Plan</th><th>Direction</th><th>Vessels</th><th>Created</th></tr></thead><tbody id="plans"></tbody></table></section>
+    <section class="panel wide"><h2>Valve opening ramp</h2>
+      <div class="form-row">
+        <div><label for="ramp-chamber">Chamber</label><select id="ramp-chamber"><option>chamber-1</option><option>chamber-2</option></select></div>
+        <div style="grid-column: span 2;"><label for="ramp-targets">Opening targets (negative drains), comma separated, 1&ndash;12 steps</label><input id="ramp-targets" value="0.1,0.2,0.3,0.4"></div>
+      </div>
+      <div class="form-row"><div style="grid-column: span 3;"><button type="button" id="ramp-start">Start ramp</button></div></div>
+      <div class="metrics">
+        <div class="metric">Phase<strong id="ramp-phase">-</strong></div>
+        <div class="metric">Completed / remaining<strong id="ramp-progress">-</strong></div>
+        <div class="metric">Next step / cycle<strong id="ramp-next">-</strong></div>
+      </div>
+      <table style="margin-top:12px;"><thead><tr><th>#</th><th>Target</th><th>State</th><th>Field command</th></tr></thead><tbody id="ramp-steps"></tbody></table>
+      <div class="form-row" style="margin-top:12px;">
+        <div><label>&nbsp;</label><button type="button" id="ramp-pause" disabled>Pause before next step</button></div>
+        <div><label for="ramp-reviewer">Safety reviewer</label><input id="ramp-reviewer" placeholder="Operator name"></div>
+        <div><label>&nbsp;</label><span style="display:flex;align-items:center;gap:8px;min-height:38px;"><input type="checkbox" id="ramp-review" style="width:auto;min-height:0;"><label for="ramp-review" style="margin:0;">I completed the safety review</label></span></div>
+      </div>
+      <div class="form-row">
+        <div><label>&nbsp;</label><button type="button" id="ramp-resume" disabled>Resume from next step</button></div>
+        <div><label>&nbsp;</label><button type="button" id="ramp-cancel" class="danger" disabled>Cancel ramp</button></div>
+      </div>
+      <div class="message" id="ramp-message"></div>
+    </section>
   </div>
-</main><script src="/assets/app.js"></script><script src="/assets/operations.js"></script>
+</main><script src="/assets/app.js"></script><script src="/assets/operations.js"></script><script src="/assets/valve-ramp.js"></script>
 </body></html>

@@ -47,7 +47,24 @@ type Runtime struct {
 	Now             func() time.Time
 }
 
-func NewRuntime(ctx context.Context, dataDirectory string) (*Runtime, error) {
+// RuntimeOption customises runtime construction, primarily for deterministic
+// tests. Production callers use the zero-value defaults.
+type RuntimeOption func(*runtimeConfig)
+
+type runtimeConfig struct {
+	rampInterval time.Duration
+}
+
+// WithRampInterval overrides the pacing between valve ramp step dispatches.
+func WithRampInterval(interval time.Duration) RuntimeOption {
+	return func(config *runtimeConfig) { config.rampInterval = interval }
+}
+
+func NewRuntime(ctx context.Context, dataDirectory string, options ...RuntimeOption) (*Runtime, error) {
+	config := runtimeConfig{rampInterval: 25 * time.Millisecond}
+	for _, option := range options {
+		option(&config)
+	}
 	now := time.Now
 	store, err := journal.NewRuntimeStore(dataDirectory)
 	if err != nil {
@@ -69,7 +86,7 @@ func NewRuntime(ctx context.Context, dataDirectory string) (*Runtime, error) {
 	leaseSweeper := lease.NewSweeper(leaseRegistry, now)
 	planner := schedule.NewPlanner(admissionService, recorder, now)
 	scheduleService := schedule.NewService(planner, signalPublisher)
-	ramp := hydraulics.NewRamp(25*time.Millisecond, now)
+	ramp := hydraulics.NewRamp(config.rampInterval, now)
 	hydraulicsController := hydraulics.NewController(gateCommands, recorder, ramp, now)
 	barrier := safety.NewBarrier()
 	var safetyCoordinator *safety.Coordinator
@@ -88,6 +105,10 @@ func NewRuntime(ctx context.Context, dataDirectory string) (*Runtime, error) {
 		levelByChamber, emergencyActive,
 	)
 	cycleCoordinator := cycle.NewCoordinator(gateController, hydraulicsController, recorder, now)
+	hydraulicsController.BindCycleGuard(func(cycleValue model.TransitCycle) error {
+		_, err := cycleCoordinator.RequireActive(cycleValue)
+		return err
+	})
 	cycleService := cycle.NewService(cycleCoordinator, admissionService)
 	safetyCoordinator = safety.NewCoordinator(gateCommands, barrier, recorder, now)
 	safetyService := safety.NewService(safetyCoordinator, cycleCoordinator)
